@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+vars:
+  PORT: 3000
+  DC_DEV: docker-compose -p dev -f docker-compose.yml -f docker-compose.override.yml
+  DC_PROD: docker-compose -p prod -f docker-compose.yml -f docker-compose.prod.yml
+  DC_TEST: docker-compose -p test -f docker-compose.yml -f docker-compose.test.yml
+
+tasks:
+  
+  up:
+    desc: Start development environment (alias for dev)
+    cmds:
+      - task: dev
+
+  dev:
+    desc: Start development environment (with hot-reload and logs)
+    deps: [check-docker]
+    cmds:
+      - "{{.DC_DEV}} up -d --build --remove-orphans"
+      - echo "Development environment started! (Project dev)"
+      - task: logs
+
+  build:
+    desc: Build images for development explicitly
+    deps: [check-docker]
+    cmds:
+      - "{{.DC_DEV}} build"
+
+  logs:
+    desc: Follow logs
+    cmds:
+      - "{{.DC_DEV}} logs -f"
+
+  test:
+    desc: Run full test suite in isolated containers
+    deps: [check-docker]
+    ignore_error: true
+    cmds:
+      - echo "🧪 Running tests..."
+      - "{{.DC_TEST}} run --rm --build tasks-service npm test"
+      - "{{.DC_TEST}} run --rm --build stats-service npm test"
+      - task: clean-test
+      - echo "✅ All tests completed!"
+
+  clean-test:
+    internal: true
+    desc: Cleanup test environment
+    cmds:
+      - "{{.DC_TEST}} down -v --remove-orphans"
+
+  prod:
+    desc: Start production environment
+    deps: [check-docker]
+    cmds:
+      - "{{.DC_PROD}} up -d --build --remove-orphans"
+      - echo "Production environment started! (Project prod)"
+
+  down:
+    desc: Stop all containers and remove networks (dev project by default)
+    cmds:
+      - "{{.DC_DEV}} down --remove-orphans"
+      - echo "🛑 Development environment stopped"
+
+  clean:
+    desc: Fierce cleanup (containers, volumes, networks, and local images) for ALL projects
+    prompt: "⚠️ This will delete ALL data (volumes) and local images for dev, prod AND test. Are you sure?"
+    cmds:
+      - "{{.DC_DEV}} down -v --rmi local --remove-orphans"
+      - "{{.DC_TEST}} down -v --rmi local --remove-orphans"
+      - "{{.DC_PROD}} down -v --rmi local --remove-orphans"
+      - echo "🧹 All environments fully cleaned"
+  check-docker:
+    internal: true
+    desc: Check if Docker daemon is running
+    silent: true
+    cmds:
+      - 'docker info > /dev/null 2>&1 || (echo "ERREUR: Docker n est pas lance !" && exit 1)'

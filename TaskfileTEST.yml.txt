@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+vars:
+  SERVICES: tasks-service stats-service frontend
+  NODE_SERVICES: tasks-service stats-service
+
+tasks:
+  default:
+    desc: Affiche les tâches disponibles
+    cmds:
+      - task --list
+    silent: true
+
+  install:
+    desc: Installe les dépendances
+    deps:
+      - clean
+    cmds:
+      - for : {var : NODE_SERVICES, split : ' '}
+        cmd : "cd {{.ITEM}} && npm install"
+      - echo "Dépendances installées"
+    silent: true
+
+  test:
+    desc: Lance les tests
+    deps:
+      - install
+    cmds:
+      - for : {var : NODE_SERVICES, split : ' '}
+        cmd : "cd {{.ITEM}} && npm test"
+      - echo "Tests lancés"
+    silent: true
+
+  clean:
+    desc: Supprime les fichiers de build
+    cmds:
+      - for : {var : NODE_SERVICES, split : ' '}
+        cmd : "cd {{.ITEM}} && rm -rf node_modules"
+      - echo "Fichiers de build supprimés"
+    silent: true
+
+  build:
+    desc: Construit les images avec docker-compose
+    cmds:
+      - docker-compose -f docker-compose.yml build
+      - echo "Images Docker construites"
+
+    
+
+  
+    
+  
+

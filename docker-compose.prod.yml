@@ -1,0 +1,23 @@
+services:
+  postgres:
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  tasks-service:
+    build:
+      target: production
+    environment:
+      - NODE_ENV=production
+    # In production, we don't mount source code volumes (code is baked into image)
+    # Since overrides merge list items (volumes), we can't easily 'unmount' volumes defined in base.
+    # Therefore, the base docker-compose.yml must NOT have volumes defined.
+
+  stats-service:
+    build:
+      target: production
+    environment:
+      - NODE_ENV=production
+    # Frontend is already optimized for production in its Dockerfile (multi-stage build with Nginx)
+
+volumes:
+  pgdata:

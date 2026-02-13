@@ -1,0 +1,98 @@
+services:
+  # Database Service
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: taskuser
+      POSTGRES_PASSWORD: taskpass
+      POSTGRES_DB: taskdb
+    volumes:
+      # pgdata volume moved to override/prod files to allow tmpfs in test
+      # Mount init.sql to automatically initialize the database
+      - ./tasks-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U taskuser -d taskdb" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # Adminer Service (DB Management UI)
+  adminer:
+    image: adminer
+    container_name: adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    networks:
+      - app-net
+    depends_on:
+      - postgres
+    restart: always
+
+  # Core Service: Tasks Management API
+  tasks-service:
+    image: tasks-service:latest
+    build:
+      context: ./tasks-service
+      dockerfile: Dockerfile
+    container_name: tasks-service
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://taskuser:taskpass@postgres:5432/taskdb
+    networks:
+      - app-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+
+  # Statistics Service API
+  stats-service:
+    image: stats-service:latest
+    build:
+      context: ./stats-service
+      dockerfile: Dockerfile
+    container_name: stats-service
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      # Use service name for internal communication
+      - TASKS_SERVICE_URL=http://tasks-service:3001
+    networks:
+      - app-net
+    depends_on:
+      - tasks-service
+    restart: always
+
+  # Frontend Application
+  frontend:
+    image: frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Build-time variables for Vite (baked into static files)
+        # Using localhost because the browser runs outside the container network
+        VITE_TASKS_API_URL: http://localhost:3001/api/tasks
+        VITE_STATS_API_URL: http://localhost:3002/api/stats
+    container_name: frontend
+    ports:
+      - "80:80"
+    networks:
+      - app-net
+    depends_on:
+      - tasks-service
+      - stats-service
+    restart: always
+
+networks:
+  app-net:
+    driver: bridge

@@ -1,0 +1,26 @@
+services:
+  postgres:
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  tasks-service:
+    build:
+      target: dev
+    volumes:
+      - ./tasks-service:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+
+  stats-service:
+    build:
+      target: dev
+    volumes:
+      - ./stats-service:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+  # Potentially add volume mounts for other services here for dev mode
+
+volumes:
+  pgdata:

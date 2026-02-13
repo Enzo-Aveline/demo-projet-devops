@@ -2,12 +2,28 @@ services:
   postgres:
     volumes:
       - pgdata:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   tasks-service:
     build:
       target: production
     environment:
       - NODE_ENV=production
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
     # In production, we don't mount source code volumes (code is baked into image)
     # Since overrides merge list items (volumes), we can't easily 'unmount' volumes defined in base.
     # Therefore, the base docker-compose.yml must NOT have volumes defined.
@@ -17,7 +33,24 @@ services:
       target: production
     environment:
       - NODE_ENV=production
-    # Frontend is already optimized for production in its Dockerfile (multi-stage build with Nginx)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
+
+  frontend:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 128M
+        reservations:
+          cpus: '0.10'
+          memory: 64M
 
 volumes:
   pgdata:

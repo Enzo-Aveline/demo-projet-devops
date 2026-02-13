@@ -41,18 +41,18 @@ export function validateTaskTitle(title: string): string | null {
  * Creates a new task from a DTO
  * Pure function: no side effects
  */
-export function createTask(dto: CreateTaskDTO): Task {
+export function createTask(dto: CreateTaskDTO, id: string, createdAt: Date): Task {
   const error = validateTaskTitle(dto.title)
   if (error) {
     throw new Error(error)
   }
 
   return {
-    id: crypto.randomUUID(),
+    id: id,
     title: dto.title.trim(),
     description: dto.description?.trim(),
     status: 'todo',
-    createdAt: new Date()
+    createdAt: createdAt
   }
 }
 

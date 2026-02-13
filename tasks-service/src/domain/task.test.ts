@@ -29,7 +29,9 @@ describe('validateTaskTitle', () => {
 describe('createTask', () => {
   it('should create a task with default status todo', () => {
     const dto = { title: 'My task' }
-    const task = createTask(dto)
+    const id = crypto.randomUUID()
+    const createdAt = new Date()
+    const task = createTask(dto, id, createdAt)
 
     expect(task.id).toBeDefined()
     expect(task.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
@@ -41,15 +43,21 @@ describe('createTask', () => {
 
   it('should trim title and description', () => {
     const dto = { title: '  Spaces  ', description: '  Desc  ' }
-    const task = createTask(dto)
+    const id = crypto.randomUUID()
+    const createdAt = new Date()
+    const task = createTask(dto, id, createdAt)
 
     expect(task.title).toBe('Spaces')
     expect(task.description).toBe('Desc')
   })
 
   it('should throw error for invalid title', () => {
-    expect(() => createTask({ title: '' })).toThrow('Title cannot be empty')
-    expect(() => createTask({ title: 'a'.repeat(101) })).toThrow('Title must be less than 100 characters')
+    const dto = { title: '' }
+    const id = crypto.randomUUID()
+    const createdAt = new Date()
+    expect(() => createTask(dto, id, createdAt)).toThrow('Title cannot be empty')
+    const dto2 = { title: 'a'.repeat(101) }
+    expect(() => createTask(dto2, id, createdAt)).toThrow('Title must be less than 100 characters')
   })
 })
 

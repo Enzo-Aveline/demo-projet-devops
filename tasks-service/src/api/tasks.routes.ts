@@ -53,7 +53,9 @@ export function createTaskRoutes(repository: ITaskRepository): Router {
   router.post('/', async (req: Request, res: Response) => {
     try {
       const dto: CreateTaskDTO = req.body
-      const task = createTask(dto)
+      const id = crypto.randomUUID()
+      const createdAt = new Date()
+      const task = createTask(dto, id, createdAt)
       await repository.save(task)
 
       res.status(201).json(task)

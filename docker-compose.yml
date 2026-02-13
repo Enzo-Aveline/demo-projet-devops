@@ -84,8 +84,7 @@ services:
         VITE_TASKS_API_URL: http://localhost:3001/api/tasks
         VITE_STATS_API_URL: http://localhost:3002/api/stats
     container_name: frontend
-    ports:
-      - "80:80"
+
     networks:
       - app-net
     depends_on:

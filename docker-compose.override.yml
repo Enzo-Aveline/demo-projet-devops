@@ -20,6 +20,10 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
+
+  frontend:
+    ports:
+      - "80:80"
   # Potentially add volume mounts for other services here for dev mode
 
 volumes:

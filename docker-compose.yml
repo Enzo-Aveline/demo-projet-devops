@@ -93,6 +93,21 @@ services:
       - stats-service
     restart: always
 
+  # Local Docker Registry
+  registry:
+    image: registry:2
+    container_name: local-registry
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+    networks:
+      - app-net
+
 networks:
   app-net:
     driver: bridge
+
+volumes:
+  registry-data:

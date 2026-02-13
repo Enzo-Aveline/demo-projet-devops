@@ -7,6 +7,11 @@ vars:
   DC_DEV: docker-compose -p dev -f docker-compose.yml -f docker-compose.override.yml
   DC_PROD: docker-compose -p prod -f docker-compose.yml -f docker-compose.prod.yml
   DC_TEST: docker-compose -p test -f docker-compose.yml -f docker-compose.test.yml
+  NODE_SERVICES: tasks-service stats-service
+  REGISTRY_URL: localhost:5000
+  VERSION: 1.0.1
+
+  DOCKER_SERVICES: tasks-service stats-service frontend
 
 tasks:
   
@@ -29,21 +34,79 @@ tasks:
     cmds:
       - "{{.DC_DEV}} build"
 
+  docker:build:
+    desc: Build images
+    deps: [check-docker]
+    cmds:
+      - "{{.DC_DEV}} build {{.DOCKER_SERVICES}}"
+
+  docker:tag:
+    desc: Tag images for registry
+    cmds:
+      - for: { var: DOCKER_SERVICES, split: ' ' }
+        cmd: docker tag {{.ITEM}}:latest {{.REGISTRY_URL}}/{{.ITEM}}:{{.VERSION}}
+
+  docker:push:
+    desc: Push images to local registry
+    cmds:
+      - for: { var: DOCKER_SERVICES, split: ' ' }
+        cmd: docker push {{.REGISTRY_URL}}/{{.ITEM}}:{{.VERSION}}
+
+  docker:
+    desc: Build, tag, and push images
+    cmds:
+      - task: docker:build
+      - task: docker:tag
+      - task: docker:push
+      - echo "✅ Images pushed to {{.REGISTRY_URL}}"
+
+
   logs:
     desc: Follow logs
     cmds:
       - "{{.DC_DEV}} logs -f"
 
-  test:
-    desc: Run full test suite in isolated containers
-    deps: [check-docker]
-    ignore_error: true
+  install:
+    desc: Install dependencies for all services
     cmds:
-      - echo "🧪 Running tests..."
-      - "{{.DC_TEST}} run --rm --build tasks-service npm test"
-      - "{{.DC_TEST}} run --rm --build stats-service npm test"
-      - task: clean-test
-      - echo "✅ All tests completed!"
+      - echo "📦 Installing dependencies..."
+      - for: { var: NODE_SERVICES, split: ' ' }
+        cmd: cd {{.ITEM}} && npm install
+      - echo "✅ Dependencies installed"
+
+  test:
+    desc: Lance tous les tests
+    deps: [install]
+    cmds:
+      - echo "🧪 Lancement des tests..."
+      - for: { var: NODE_SERVICES, split: ' ' }
+        cmd: |
+          echo "Testing {{.ITEM}}..."
+          cd {{.ITEM}} && npm test
+      - echo "✅ Tous les tests sont passés"
+
+  test:watch:
+    desc: Lance les tests en mode watch
+    cmds:
+      - echo "👀 Mode watch activé (Ctrl+C pour quitter)"
+      - echo "Choisir le service tasks-service ou stats-service"
+      - cd {{.CLI_ARGS}} && npm run test:watch
+
+  test:service:
+    desc: Test un service spécifique
+    cmds:
+      - echo "🧪 Test de {{.CLI_ARGS}}..."
+      - cd {{.CLI_ARGS}} && npm test
+
+  ci:
+    desc: Pipeline CI complète (install → test → build)
+    cmds:
+      - echo "🚀 Démarrage de la pipeline CI..."
+      - task: install
+      - task: test
+      - task: build
+      - task: docker
+      - echo "✅ Pipeline CI terminée avec succès"
 
   clean-test:
     internal: true
@@ -72,6 +135,16 @@ tasks:
       - "{{.DC_TEST}} down -v --rmi local --remove-orphans"
       - "{{.DC_PROD}} down -v --rmi local --remove-orphans"
       - echo "🧹 All environments fully cleaned"
+      
+  registry:clean:
+    desc: Supprime toutes les images du registry
+    cmds:
+      - echo "⚠️ Suppression des images du registry..."
+      - docker compose down registry
+      - docker volume rm demo-projet-devops_registry-data || true
+      - docker compose up -d registry
+      - echo "✅ Registry nettoyé"
+
   check-docker:
     internal: true
     desc: Check if Docker daemon is running
